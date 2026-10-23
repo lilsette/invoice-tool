@@ -41,8 +41,8 @@ jobs:
           for i in $(seq 1 20); do curl -s -o /dev/null http://127.0.0.1:8000 && break; sleep 0.5; done
           google-chrome --headless=new --no-sandbox --disable-gpu --virtual-time-budget=30000 \
             --dump-dom http://127.0.0.1:8000/v2/test/selftest.html > selftest.html
-          sed -n 's/.*<pre id="out">\(.*\)<\/pre>.*/\1/p' selftest.html | sed 's/<[^>]*>//g' || true
-          grep -q '<title>PASS</title>' selftest.html || { echo "::error::Reader self-test failed"; cat selftest.html | sed 's/<[^>]*>//g' | tail -40; exit 1; }
+          python3 -c "import html,re,sys; t=open('selftest.html').read(); m=re.search(r'<pre id=\"out\">(.*?)</pre>', t, re.S); print(html.unescape(re.sub(r'<[^>]+>', '', m.group(1) if m else t)))"
+          grep -q '<title>PASS</title>' selftest.html || { echo "::error::Reader self-test failed"; exit 1; }
 
       - uses: actions/upload-pages-artifact@v3
         if: github.event_name != 'pull_request'
