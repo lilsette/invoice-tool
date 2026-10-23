@@ -20,6 +20,17 @@ downloads the filled PO sheet.
 Templates and remembered suppliers are saved **in this browser on this computer**. Another
 computer, another browser, or clearing browser data starts empty, so add the templates again.
 
+## The website
+
+https://lilsette.github.io/invoice-tool/ is built and published by GitHub Actions
+(`.github/workflows/pages.yml`) on every push to `main`. The workflow builds the page from `src/`,
+runs the self-test in headless Chrome, and publishes only if every test invoice still reads
+exactly right. The site also has a **Load the examples** panel with the made-up invoices and
+templates.
+
+`docs/` is build output and isn't committed. `dist/invoice-to-po.html` is committed so the file can
+be downloaded straight from GitHub. CI fails if it's out of date, so rebuild before committing.
+
 ## Changing it
 
 The source is in `src/`: `reader.js` reads PDFs and CSVs, `po.js` fills the sheet, `app.js` runs

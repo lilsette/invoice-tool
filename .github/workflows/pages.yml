@@ -1,0 +1,61 @@
+# Build the page from v2/src, check the reader still reads every test invoice, and publish it
+# to GitHub Pages. Runs on every push to main (and by hand from the Actions tab).
+name: Build and publish the site
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build the page (v2/dist + docs/)
+        run: node v2/build.mjs
+
+      - name: The committed single-file download matches the source
+        run: |
+          git diff --exit-code v2/dist/ || {
+            echo "::error::v2/dist/invoice-to-po.html is out of date — run 'node v2/build.mjs' and commit it"; exit 1; }
+
+      - name: Self-test the reader in headless Chrome
+        run: |
+          python3 -m http.server 8000 --bind 127.0.0.1 >/dev/null 2>&1 &
+          for i in $(seq 1 20); do curl -s -o /dev/null http://127.0.0.1:8000 && break; sleep 0.5; done
+          google-chrome --headless=new --no-sandbox --disable-gpu --virtual-time-budget=30000 \
+            --dump-dom http://127.0.0.1:8000/v2/test/selftest.html > selftest.html
+          sed -n 's/.*<pre id="out">\(.*\)<\/pre>.*/\1/p' selftest.html | sed 's/<[^>]*>//g' || true
+          grep -q '<title>PASS</title>' selftest.html || { echo "::error::Reader self-test failed"; cat selftest.html | sed 's/<[^>]*>//g' | tail -40; exit 1; }
+
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: docs
+
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

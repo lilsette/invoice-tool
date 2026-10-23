@@ -7,4 +7,5 @@ suppliers.json
 templates/
 !samples/**/templates/
 .env
-!docs/examples/*.xlsx
+# built by v2/build.mjs; CI builds and publishes it (.github/workflows/pages.yml)
+docs/
