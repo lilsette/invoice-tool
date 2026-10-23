@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Reader self-test</title>
+<!-- Serve the repo root over http (e.g. `npx serve` or `python3 -m http.server`) and open
+     /v2/test/selftest.html. Every test invoice must read exactly as its .expected.json says. -->
+<script src="../vendor/pdf.worker.min.js"></script>
+<script src="../vendor/pdf.min.js"></script>
+<script src="../vendor/exceljs.min.js"></script>
+<script src="../src/reader.js"></script>
+<script src="../src/po.js"></script>
+<style>body { font: 13px/1.5 ui-monospace, Menlo, monospace; padding: 16px; } .bad { color: #b00; } .ok { color: #070; }</style>
+</head>
+<body>
+<pre id="out">running…</pre>
+<script>
+const SAMPLES = "../../samples/test-invoices/";
+const INVOICES = ["01-harbour-pigments", "02-gumleaf-easels", "03-paperbark-mills", "04-kookaburra-brushes"];
+const out = [];
+let ok = true;
+const log = (s, bad) => { out.push(bad ? `<span class="bad">${s}</span>` : s); if (bad) ok = false; };
+
+(async () => {
+  const suppliers = await (await fetch(SAMPLES + "suppliers.json")).json();
+  const templates = {};
+  for (const code of Object.values(suppliers).concat("KB"))
+    templates[code] = await (await fetch(`${SAMPLES}templates/${code}.xlsx`)).arrayBuffer();
+
+  for (const name of INVOICES) {
+    const exp = await (await fetch(`${SAMPLES}${name}.expected.json`)).json();
+    let got;
+    try { got = await InvoiceReader.readPdf(await (await fetch(`${SAMPLES}${name}.pdf`)).arrayBuffer(), suppliers); }
+    catch (e) { log(`${name}: ${e.message}`, true); continue; }
+    log(`== ${name}: ${got.lines.length}/${exp.lines.length} lines · ${got.supplier_name} · ${got.invoice_number} · ${got.invoice_date} · subtotal ${got.subtotal_ex_tax}`);
+    for (const k of ["supplier_name", "invoice_number", "invoice_date", "subtotal_ex_tax"])
+      if (got[k] !== exp[k]) log(`   ${k}: got ${JSON.stringify(got[k])} expected ${JSON.stringify(exp[k])}`, true);
+    if (got.lines.length !== exp.lines.length) log("   line count differs", true);
+    exp.lines.forEach((e, i) => {
+      const g = got.lines[i] || {};
+      for (const k of ["supplier_sku", "barcode", "description", "qty", "unit_cost_ex_tax"]) {
+        const same = k === "unit_cost_ex_tax" ? Math.abs(g[k] - e[k]) < 0.0001 : g[k] === e[k];
+        if (!same) log(`   ${e.supplier_sku}: ${k} got ${JSON.stringify(g[k])} expected ${JSON.stringify(e[k])}`, true);
+      }
+    });
+    const code = name.startsWith("04") ? "KB" : Object.entries(suppliers).find(([f]) => got.supplier_name.includes(f))?.[1];
+    const po = await PO.buildPo(got, { template: templates[code], source: name + ".pdf" });
+    const buf = await po.workbook.xlsx.writeBuffer();
+    log(`   PO: ${po.filename} · ${po.lines.filter(l => l.product_id).length} matched · ${buf.byteLength} bytes · ${po.warnings.length} warning(s)`);
+    po.warnings.forEach(w => log(`     ! ${w}`));
+  }
+
+  const csv = await (await fetch(SAMPLES + "05-harbour-export.csv")).text();
+  const c = InvoiceReader.readCsv(csv, suppliers, "05-harbour-export.csv");
+  log(`== csv: ${c.lines.length} lines · ${c.supplier_name} · ${c.invoice_number} · ${c.lines.map(l => l.supplier_sku + "×" + l.qty + "@" + l.unit_cost_ex_tax).join(", ")}`);
+  if (c.lines.length !== 3 || c.invoice_number !== "HP-INV-58300" || c.lines[1].unit_cost_ex_tax !== 12.78) log("   csv read wrong", true);
+
+  const standIn = await PO.buildPo(c, { code: "HP", outlet: "The Rocks", source: "x.csv" });
+  log(`== stand-in: ${standIn.filename} · ${standIn.warnings[0]}`);
+
+  log(ok ? '<span class="ok">ALL MATCH</span>' : '<span class="bad">DIFFERENCES</span>');
+})().catch(e => log(`crashed: ${e.stack}`, true)).finally(() => {
+  document.getElementById("out").innerHTML = out.join("\n");
+  document.title = ok ? "PASS" : "FAIL";
+});
+</script>
+</body>
+</html>

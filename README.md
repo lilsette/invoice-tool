@@ -2,6 +2,9 @@
 
 Supplier PDF invoice → filled-in Retail Express purchase-order import sheet.
 
+> **v2: a single HTML file, with no Python or server.** See [v2/README.md](v2/README.md); the tool is
+> `v2/dist/invoice-to-po.html`. What follows is v1, the Python version.
+
 No AI and no internet: everything runs on this computer.
 
 ## Setup (once)
