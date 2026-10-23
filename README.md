@@ -4,9 +4,31 @@ Supplier PDF invoice → filled-in Retail Express purchase-order import sheet.
 
 ## Setup (once)
 
-Needs [uv](https://docs.astral.sh/uv/) and an Anthropic API key:
+1. Install [uv](https://docs.astral.sh/uv/) (Mac: `brew install uv`; Windows: see the uv site).
+2. Get an Anthropic API key at https://console.anthropic.com → API Keys. Reading invoices uses it
+   (a few cents per invoice).
+3. Copy `.env.example` to `.env` and paste the key in.
 
-    export ANTHROPIC_API_KEY=sk-ant-...
+## The web app
+
+Double-click `start.command` (Mac) or `start.bat` (Windows), or run `uv run app.py`.
+It opens http://127.0.0.1:8765, which only this computer can reach.
+
+- **Supplier templates**: add each template downloaded from Retail Express (see below) once.
+- **Drop invoices** onto the page. Each one is read, matched to its supplier's template and shown
+  as a table you can correct (SKU, qty, unit cost, remove lines) before downloading the PO sheet.
+- Lines not in Retail Express are highlighted; the lines total is checked against the invoice subtotal.
+- Choosing a template for an unknown supplier remembers that supplier for next time.
+
+Try it with the made-up invoices in `samples/test-invoices/` (regenerate with
+`uv run samples/make_test_invoices.py`):
+
+    uv run app.py --templates samples/test-invoices/templates --suppliers samples/test-invoices/suppliers.json
+
+The `.expected.json` files there can be dropped on the page too: they show the right result
+without needing an API key.
+
+## Command line
 
 ## Get each supplier's template (once per supplier, refresh when their range changes)
 
@@ -18,8 +40,6 @@ Then add the supplier's invoice name to `suppliers.json` (copy `suppliers.exampl
 so the tool knows which template an invoice belongs to:
 
     {"Fila Group": "FG", "Faber-Castell": "FC"}
-
-## Use
 
     uv run invoice_to_po.py ~/Downloads/invoice.pdf
 

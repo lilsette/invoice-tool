@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invoice to PO</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --panel: #ffffff; --ink: #1d1f22; --muted: #6b6f76; --line: #e3e1dc;
+    --accent: #1f5f8b; --accent-ink: #ffffff; --ok: #2c7a4b; --ok-bg: #e5f3ea;
+    --warn: #8a5a00; --warn-bg: #fff3d6; --bad: #a3271f; --bad-bg: #fbe7e5; --input: #fbfaf8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16181b; --panel: #1f2226; --ink: #e8e6e1; --muted: #9a9ea6; --line: #33373d;
+      --accent: #5aa3d6; --accent-ink: #0d1114; --ok: #6cc28f; --ok-bg: #1e3326;
+      --warn: #e8b04a; --warn-bg: #3a2f17; --bad: #f08a80; --bad-bg: #3d1f1c; --input: #181a1d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 14px 24px; border-bottom: 1px solid var(--line);
+           background: var(--panel); position: sticky; top: 0; z-index: 2; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 650; white-space: nowrap; }
+  header .spacer { flex: 1; }
+  main { max-width: 1180px; margin: 0 auto; padding: 20px 24px 60px; }
+  .pill { font-size: 12px; padding: 3px 9px; border-radius: 99px; white-space: nowrap; }
+  .pill.ok { background: var(--ok-bg); color: var(--ok); }
+  .pill.warn { background: var(--warn-bg); color: var(--warn); }
+  .pill.bad { background: var(--bad-bg); color: var(--bad); }
+  .pill.muted { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+  button, .btn { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+                 padding: 6px 12px; border-radius: 7px; cursor: pointer; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .5; cursor: default; }
+  button.link { border: 0; background: none; color: var(--muted); padding: 2px 6px; }
+  button.link:hover { color: var(--bad); }
+  input, select { font: inherit; color: var(--ink); background: var(--input); border: 1px solid var(--line);
+                  border-radius: 6px; padding: 4px 7px; }
+  section.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; margin-bottom: 18px; }
+  .panel-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; }
+  .panel-head h2 { font-size: 14px; margin: 0; font-weight: 650; }
+  .panel-body { padding: 0 16px 14px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 12px; }
+  #drop { display: block; border: 2px dashed var(--line); border-radius: 10px; padding: 34px 16px; text-align: center;
+          background: var(--panel); margin-bottom: 18px; cursor: pointer; transition: border-color .15s, background .15s; }
+  #drop.over { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--panel)); }
+  #drop strong { font-size: 15px; display: block; margin-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  th { font-size: 12px; font-weight: 600; color: var(--muted); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.skip td { opacity: .55; }
+  tr.unmatched td { background: var(--warn-bg); }
+  td input.qty { width: 64px; text-align: right; }
+  td input.cost { width: 86px; text-align: right; }
+  td input.sku { width: 130px; }
+  .card-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; padding: 14px 16px 10px; }
+  .card-head .title { font-weight: 650; font-size: 15px; }
+  .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 0 16px 12px; }
+  .controls label { display: flex; align-items: center; gap: 6px; }
+  .table-wrap { overflow-x: auto; padding: 0 8px; }
+  .foot { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: flex-start; padding: 12px 16px 14px; }
+  .foot ul { margin: 0; padding-left: 18px; color: var(--warn); }
+  .foot .totals { margin-left: auto; text-align: right; }
+  .foot .totals div { font-variant-numeric: tabular-nums; }
+  .spinner { width: 14px; height: 14px; border: 2px solid var(--line); border-top-color: var(--accent);
+             border-radius: 50%; display: inline-block; animation: spin .8s linear infinite; vertical-align: -2px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .note { color: var(--muted); font-size: 12px; max-width: 220px; }
+  .empty { padding: 4px 0 8px; }
+  @media (max-width: 700px) {
+    header, main { padding-left: 16px; padding-right: 16px; }
+    .foot .totals { margin-left: 0; text-align: left; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Invoice → Retail Express PO</h1>
+  <span class="spacer"></span>
+  <span id="keyStatus" class="pill muted">checking…</span>
+</header>
+<main>
+  <section class="panel" id="templatesPanel">
+    <div class="panel-head">
+      <h2>Supplier templates</h2>
+      <span class="muted small" id="templateCount"></span>
+      <span class="spacer" style="flex:1"></span>
+      <label class="btn">Add template…<input type="file" id="templateInput" accept=".xlsx,.xlsm" multiple hidden></label>
+    </div>
+    <div class="panel-body">
+      <div class="muted small" style="margin-bottom:8px">
+        In Retail Express: <b>Get Excel Template</b> → <i>1 Supplier, for 1 Outlet</i> → pick the outlet and supplier →
+        .xlsx. Add the downloaded file here once per supplier; re-add it when their range changes.
+      </div>
+      <table id="templateTable"></table>
+    </div>
+  </section>
+
+  <label id="drop">
+    <strong>Drop supplier invoices here</strong>
+    <span class="muted">PDF invoices, several at once is fine — or click to choose</span>
+    <input type="file" id="fileInput" accept=".pdf,.json" multiple hidden>
+  </label>
+
+  <div id="invoices"></div>
+</main>
+
+<script>
+const $ = (sel, el = document) => el.querySelector(sel);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const cost = v => (+v).toFixed(4).replace(/0{1,2}$/, "");   // 5.5 → 5.50, 8.3333 stays
+const money = n => n == null ? "—" : "$" + Number(n).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+let state = { templates: [], suppliers: {} };
+const invoices = [];   // {id, file, status, error, data, code, outlet, rememberAs, preview}
+let nextId = 1;
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, opts);
+  if (!res.ok) {
+    let msg = res.statusText;
+    try { msg = (await res.json()).detail || msg; } catch {}
+    throw new Error(msg);
+  }
+  return res;
+}
+
+// ---------------------------------------------------------------- status + templates
+
+async function loadStatus() {
+  const s = await (await api("/api/status")).json();
+  state.templates = s.templates; state.suppliers = s.suppliers;
+  const pill = $("#keyStatus");
+  pill.className = "pill " + (s.api_key ? "ok" : "bad");
+  pill.textContent = s.api_key ? "Ready to read PDFs" : "No ANTHROPIC_API_KEY — PDFs can't be read";
+  renderTemplates();
+}
+
+function renderTemplates() {
+  const t = state.templates;
+  $("#templateCount").textContent = t.length ? `${t.length} supplier${t.length > 1 ? "s" : ""}` : "";
+  $("#templateTable").innerHTML = t.length
+    ? `<tr><th>Supplier code</th><th>Outlet</th><th>File</th><th></th></tr>` +
+      t.map(x => `<tr><td><b>${esc(x.code)}</b></td><td>${esc(x.outlet)}</td><td class="muted">${esc(x.file)}</td>
+        <td class="num"><button class="link" data-del="${esc(x.code)}" title="Remove">Remove</button></td></tr>`).join("")
+    : `<tr><td class="muted empty">No templates yet — without one, POs use a stand-in layout and can't be matched to ProductIds.</td></tr>`;
+}
+
+$("#templateTable").addEventListener("click", async e => {
+  const code = e.target.dataset.del;
+  if (!code || !confirm(`Remove the ${code} template?`)) return;
+  state.templates = (await (await api(`/api/templates/${encodeURIComponent(code)}`, { method: "DELETE" })).json()).templates;
+  renderTemplates(); invoices.forEach(render);
+});
+
+$("#templateInput").addEventListener("change", async e => {
+  for (const f of e.target.files) {
+    const fd = new FormData(); fd.append("file", f);
+    try { state.templates = (await (await api("/api/templates", { method: "POST", body: fd })).json()).templates; }
+    catch (err) { alert(`${f.name}: ${err.message}`); }
+  }
+  e.target.value = "";
+  renderTemplates();
+  invoices.filter(i => i.status === "ready").forEach(i => { if (!i.code) i.code = guessCode(i.data); refresh(i); });
+});
+
+function guessCode(data) {
+  const name = (data.supplier_name || "").toLowerCase();
+  for (const [frag, code] of Object.entries(state.suppliers))
+    if (name.includes(frag.toLowerCase()) && state.templates.some(t => t.code === code)) return code;
+  return null;
+}
+
+// ---------------------------------------------------------------- invoices
+
+const drop = $("#drop");
+["dragenter", "dragover"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove("over"); }));
+drop.addEventListener("drop", e => addFiles(e.dataTransfer.files));
+$("#fileInput").addEventListener("change", e => { addFiles(e.target.files); e.target.value = ""; });
+
+function addFiles(files) {
+  for (const file of files) {
+    const inv = { id: nextId++, file, status: "reading", data: null, code: null, outlet: "", rememberAs: null, preview: null };
+    invoices.unshift(inv);
+    const el = document.createElement("section");
+    el.className = "panel"; el.id = `inv-${inv.id}`;
+    $("#invoices").prepend(el);
+    render(inv);
+    queue.push(inv);
+  }
+  pump();
+}
+
+// Read up to three invoices at once.
+const queue = []; let running = 0;
+function pump() {
+  while (running < 3 && queue.length) {
+    const inv = queue.shift(); running++;
+    extract(inv).finally(() => { running--; pump(); });
+  }
+}
+
+async function extract(inv) {
+  const fd = new FormData(); fd.append("file", inv.file);
+  try {
+    const r = await (await api("/api/extract", { method: "POST", body: fd })).json();
+    inv.data = r.data; inv.code = r.code; inv.status = "ready";
+    await refresh(inv);
+  } catch (err) {
+    inv.status = "error"; inv.error = err.message; render(inv);
+  }
+}
+
+function body(inv, extra = {}) {
+  return JSON.stringify({ data: inv.data, code: inv.code || inv.rawCode || null, outlet: inv.outlet || null, source: inv.file.name,
+                          remember_as: inv.rememberAs, ...extra });
+}
+
+async function refresh(inv) {
+  // Without a template the PO needs an outlet and a supplier code typed in.
+  if (!inv.code && !(inv.outlet && inv.rawCode)) { inv.preview = null; inv.previewError = null; render(inv); return; }
+  try {
+    inv.preview = await (await api("/api/preview", { method: "POST", headers: { "Content-Type": "application/json" }, body: body(inv) })).json();
+    inv.previewError = null;
+    if (inv.rememberAs) { state.suppliers[inv.rememberAs] = inv.code; inv.rememberAs = null; }
+  } catch (err) { inv.preview = null; inv.previewError = err.message; }
+  render(inv);
+}
+
+let editTimer;
+function edited(inv) { clearTimeout(editTimer); editTimer = setTimeout(() => refresh(inv), 350); }
+
+async function download(inv) {
+  const res = await api("/api/download", { method: "POST", headers: { "Content-Type": "application/json" }, body: body(inv) });
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = inv.preview?.filename || "PO.xlsx";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+
+function render(inv) {
+  const el = $(`#inv-${inv.id}`);
+  if (!el) return;
+  if (inv.status === "reading") {
+    el.innerHTML = `<div class="card-head"><span class="title">${esc(inv.file.name)}</span>
+      <span class="muted"><span class="spinner"></span>&nbsp; Reading invoice — this takes up to a minute</span></div>`;
+    return;
+  }
+  if (inv.status === "error") {
+    el.innerHTML = `<div class="card-head"><span class="title">${esc(inv.file.name)}</span><span class="pill bad">Couldn't read it</span>
+      <span class="spacer" style="flex:1"></span><button class="link" data-act="close">Dismiss</button></div>
+      <div class="panel-body" style="color:var(--bad)">${esc(inv.error)}</div>`;
+    el.querySelector("[data-act=close]").onclick = () => removeInv(inv);
+    return;
+  }
+
+  const d = inv.data, p = inv.preview;
+  const matched = p ? p.lines.filter((l, i) => l.product_id && d.lines[i]?.qty > 0).length : 0;
+  const options = [`<option value="">— choose supplier template —</option>`]
+    .concat(state.templates.map(t => `<option value="${esc(t.code)}" ${t.code === inv.code ? "selected" : ""}>${esc(t.code)} · ${esc(t.outlet)}</option>`));
+  const noTemplate = !inv.code;
+
+  const rows = d.lines.map((l, i) => {
+    const pl = p?.lines[i] || {};
+    const skip = l.qty <= 0;
+    const unmatched = p?.has_master && !pl.product_id && !skip;
+    const badge = skip ? `<span class="pill muted">not on PO</span>`
+      : pl.product_id ? `<span class="pill ok" title="matched on ${esc(pl.matched_on)}">${esc(pl.product_id)}</span>`
+      : p?.has_master ? `<span class="pill warn">not in Retail Express</span>` : `<span class="muted">—</span>`;
+    return `<tr class="${skip ? "skip" : unmatched ? "unmatched" : ""}" data-i="${i}">
+      <td>${badge}</td>
+      <td><input class="sku" data-f="supplier_sku" value="${esc(l.supplier_sku)}"></td>
+      <td>${esc(l.description)}${l.barcode ? `<div class="muted small">${esc(l.barcode)}</div>` : ""}</td>
+      <td class="num"><input class="qty" type="number" step="1" data-f="qty" value="${l.qty}"></td>
+      <td class="num"><input class="cost" type="number" step="0.01" data-f="unit_cost_ex_tax" value="${cost(l.unit_cost_ex_tax)}"></td>
+      <td class="num">${money(l.qty * l.unit_cost_ex_tax)}</td>
+      <td class="note">${esc(l.note)}</td>
+      <td class="num"><button class="link" data-act="del" title="Remove line">✕</button></td></tr>`;
+  }).join("");
+
+  const total = d.lines.reduce((s, l) => s + Math.max(l.qty, 0) * l.unit_cost_ex_tax, 0);
+  const sub = d.subtotal_ex_tax;
+  const diff = sub != null && Math.abs(sub - total) > 0.05;
+  const warnings = (p?.warnings || []).concat(inv.previewError ? [inv.previewError] : []);
+
+  el.innerHTML = `
+    <div class="card-head">
+      <span class="title">${esc(d.supplier_name || "Unknown supplier")}</span>
+      <span class="muted">Invoice ${esc(d.invoice_number)} · ${esc(d.invoice_date)} · ${esc(inv.file.name)}</span>
+      <span class="spacer" style="flex:1"></span>
+      ${p ? (p.has_master ? `<span class="pill ${matched === d.lines.filter(l => l.qty > 0).length ? "ok" : "warn"}">${matched} of ${d.lines.filter(l => l.qty > 0).length} matched</span>` : `<span class="pill warn">no product matching</span>`) : ""}
+      <button class="link" data-act="close" title="Remove this invoice">Remove</button>
+    </div>
+    <div class="controls">
+      <label>Supplier <select data-act="code">${options.join("")}</select></label>
+      ${noTemplate ? `<label>Outlet <input data-act="outlet" placeholder="e.g. The Rocks" value="${esc(inv.outlet)}"></label>
+                      <label>Code <input data-act="rawcode" placeholder="e.g. FG" size="5" value="${esc(inv.rawCode || "")}"></label>` : ""}
+      ${noTemplate && state.templates.length ? `<span class="muted small">Pick the supplier's template to match products — it's remembered for next time.</span>` : ""}
+    </div>
+    <div class="table-wrap"><table>
+      <tr><th>ProductId</th><th>Supplier SKU</th><th>Description</th><th class="num">Qty</th><th class="num">Unit ex GST</th>
+          <th class="num">Line</th><th>Note</th><th></th></tr>
+      ${rows}
+    </table></div>
+    <div class="foot">
+      ${warnings.length ? `<ul>${warnings.map(w => `<li>${esc(w)}</li>`).join("")}</ul>`
+        : p ? `<span class="pill ok">No problems found</span>`
+        : `<span class="muted">Choose the supplier's template — or, without one, type the outlet and supplier code.</span>`}
+      <div class="totals">
+        <div>Lines total ex GST <b>${money(total)}</b></div>
+        <div class="${diff ? "" : "muted"}" style="${diff ? "color:var(--bad)" : ""}">Invoice subtotal ${money(sub)}</div>
+        <div style="margin-top:8px"><button class="primary" data-act="download" ${p ? "" : "disabled"}>Download ${esc(p?.filename || "PO")}</button></div>
+      </div>
+    </div>`;
+
+  el.querySelector("[data-act=close]").onclick = () => removeInv(inv);
+  el.querySelector("[data-act=download]").onclick = () => download(inv).catch(e => alert(e.message));
+  el.querySelector("[data-act=code]").onchange = e => {
+    inv.code = e.target.value || null;
+    if (inv.code) inv.rememberAs = rememberKey(d.supplier_name);
+    refresh(inv);
+  };
+  const outlet = el.querySelector("[data-act=outlet]");
+  if (outlet) outlet.oninput = e => { inv.outlet = e.target.value; };
+  if (outlet) outlet.onchange = () => refresh(inv);
+  const raw = el.querySelector("[data-act=rawcode]");
+  if (raw) raw.onchange = e => { inv.rawCode = e.target.value; inv.code = null; refresh(inv); };
+  el.querySelectorAll("tr[data-i]").forEach(tr => {
+    const line = d.lines[+tr.dataset.i];
+    tr.querySelectorAll("input[data-f]").forEach(input => input.onchange = () => {
+      const f = input.dataset.f;
+      line[f] = f === "qty" ? parseInt(input.value || "0", 10) : f === "unit_cost_ex_tax" ? parseFloat(input.value || "0") : input.value;
+      edited(inv);
+    });
+    tr.querySelector("[data-act=del]").onclick = () => { d.lines.splice(+tr.dataset.i, 1); refresh(inv); };
+  });
+}
+
+// "Fila Group Pty Ltd" → "Fila Group": the part of the name that stays the same across invoices.
+function rememberKey(name) {
+  return (name || "").replace(/\b(pty\.?|ltd\.?|limited|inc\.?|co\.?|&)\s*/gi, " ").trim().split(/\s+/).slice(0, 2).join(" ");
+}
+
+function removeInv(inv) {
+  invoices.splice(invoices.indexOf(inv), 1);
+  $(`#inv-${inv.id}`)?.remove();
+}
+
+loadStatus().catch(err => { $("#keyStatus").className = "pill bad"; $("#keyStatus").textContent = "Server not reachable"; });
+</script>
+</body>
+</html>

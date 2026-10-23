@@ -1,6 +1,9 @@
 out/
 *.xlsx
-!samples/*.xlsx
+!samples/**/*.xlsx
 __pycache__/
 suppliers.json
+!samples/**/suppliers.json
 templates/
+!samples/**/templates/
+.env

@@ -1,0 +1,192 @@
+{
+  "supplier_name": "Paperbark Paper Mills",
+  "invoice_number": "PBM/26/04411",
+  "invoice_date": "2026-10-20",
+  "subtotal_ex_tax": 1373.5,
+  "lines": [
+    {
+      "supplier_sku": "PB.SK.A5.110",
+      "barcode": "9399003000000",
+      "description": "Sketch Pad A5 110gsm 50 sheets",
+      "qty": 12,
+      "unit_cost_ex_tax": 4.2,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.SK.A4.110",
+      "barcode": "9399003000001",
+      "description": "Sketch Pad A4 110gsm 50 sheets",
+      "qty": 12,
+      "unit_cost_ex_tax": 6.1,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.SK.A3.110",
+      "barcode": "9399003000002",
+      "description": "Sketch Pad A3 110gsm 50 sheets",
+      "qty": 6,
+      "unit_cost_ex_tax": 10.9,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.SK.A5.150",
+      "barcode": "9399003000003",
+      "description": "Sketch Pad A5 150gsm 50 sheets",
+      "qty": 12,
+      "unit_cost_ex_tax": 5.3,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.SK.A4.150",
+      "barcode": "9399003000004",
+      "description": "Sketch Pad A4 150gsm 50 sheets",
+      "qty": 12,
+      "unit_cost_ex_tax": 7.8,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.SK.A3.150",
+      "barcode": "9399003000005",
+      "description": "Sketch Pad A3 150gsm 50 sheets",
+      "qty": 6,
+      "unit_cost_ex_tax": 13.4,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.WC.A5C",
+      "barcode": "9399003100000",
+      "description": "Watercolour Pad A5 Cold Press 300gsm 12 sheets",
+      "qty": 6,
+      "unit_cost_ex_tax": 8.9,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.WC.A4C",
+      "barcode": "9399003100001",
+      "description": "Watercolour Pad A4 Cold Press 300gsm 12 sheets",
+      "qty": 6,
+      "unit_cost_ex_tax": 14.5,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.WC.A3C",
+      "barcode": "9399003100002",
+      "description": "Watercolour Pad A3 Cold Press 300gsm 12 sheets",
+      "qty": 6,
+      "unit_cost_ex_tax": 26.8,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.WC.A4H",
+      "barcode": "9399003100003",
+      "description": "Watercolour Pad A4 Hot Press 300gsm 12 sheets",
+      "qty": 6,
+      "unit_cost_ex_tax": 15.2,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.WC.A3H",
+      "barcode": "9399003100004",
+      "description": "Watercolour Pad A3 Hot Press 300gsm 12 sheets",
+      "qty": 6,
+      "unit_cost_ex_tax": 27.9,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.CS.BLACK",
+      "barcode": "9399003200000",
+      "description": "Coloured Card A4 220gsm Black 25pk",
+      "qty": 4,
+      "unit_cost_ex_tax": 6.75,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.CS.WHITE",
+      "barcode": "9399003200001",
+      "description": "Coloured Card A4 220gsm White 25pk",
+      "qty": 4,
+      "unit_cost_ex_tax": 6.75,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.CS.CREAM",
+      "barcode": "9399003200002",
+      "description": "Coloured Card A4 220gsm Cream 25pk",
+      "qty": 4,
+      "unit_cost_ex_tax": 6.75,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.CS.RED",
+      "barcode": "9399003200003",
+      "description": "Coloured Card A4 220gsm Red 25pk",
+      "qty": 4,
+      "unit_cost_ex_tax": 6.75,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.CS.NAVY",
+      "barcode": "9399003200004",
+      "description": "Coloured Card A4 220gsm Navy 25pk",
+      "qty": 4,
+      "unit_cost_ex_tax": 6.75,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.CS.FOREST",
+      "barcode": "9399003200005",
+      "description": "Coloured Card A4 220gsm Forest 25pk",
+      "qty": 4,
+      "unit_cost_ex_tax": 6.75,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.CS.SKY",
+      "barcode": "9399003200006",
+      "description": "Coloured Card A4 220gsm Sky 25pk",
+      "qty": 4,
+      "unit_cost_ex_tax": 6.75,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.CS.LEMON",
+      "barcode": "9399003200007",
+      "description": "Coloured Card A4 220gsm Lemon 25pk",
+      "qty": 4,
+      "unit_cost_ex_tax": 6.75,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.MX.A4",
+      "barcode": "9399003300011",
+      "description": "Mixed Media Pad A4 250gsm",
+      "qty": 6,
+      "unit_cost_ex_tax": 12.6,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.MX.A3",
+      "barcode": "9399003300028",
+      "description": "Mixed Media Pad A3 250gsm",
+      "qty": 0,
+      "unit_cost_ex_tax": 21.4,
+      "note": "backordered, none supplied"
+    },
+    {
+      "supplier_sku": "PB.TR.A4",
+      "barcode": "9399003300103",
+      "description": "Tracing Pad A4 90gsm",
+      "qty": 10,
+      "unit_cost_ex_tax": 5.95,
+      "note": ""
+    },
+    {
+      "supplier_sku": "PB.KR.ROLL",
+      "barcode": "9399003300202",
+      "description": "Kraft Paper Roll 1m x 10m",
+      "qty": 2,
+      "unit_cost_ex_tax": 18.0,
+      "note": ""
+    }
+  ]
+}

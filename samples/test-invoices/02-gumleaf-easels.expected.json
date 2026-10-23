@@ -1,0 +1,64 @@
+{
+  "supplier_name": "Gumleaf Easels & Canvas Co.",
+  "invoice_number": "102947",
+  "invoice_date": "2026-10-16",
+  "subtotal_ex_tax": null,
+  "lines": [
+    {
+      "supplier_sku": "000412",
+      "barcode": "9399002000014",
+      "description": "Stretched Canvas 30x40cm Cotton",
+      "qty": 10,
+      "unit_cost_ex_tax": 11.0,
+      "note": ""
+    },
+    {
+      "supplier_sku": "000413",
+      "barcode": "9399002000021",
+      "description": "Stretched Canvas 40x50cm Cotton",
+      "qty": 10,
+      "unit_cost_ex_tax": 15.0,
+      "note": ""
+    },
+    {
+      "supplier_sku": "000415",
+      "barcode": "9399002000038",
+      "description": "Stretched Canvas 60x90cm Deep Edge",
+      "qty": 4,
+      "unit_cost_ex_tax": 40.0,
+      "note": ""
+    },
+    {
+      "supplier_sku": "000088",
+      "barcode": "9399002000106",
+      "description": "Canvas Panel 20x25cm",
+      "qty": 20,
+      "unit_cost_ex_tax": 2.5,
+      "note": "2 x PK10 of 10 units"
+    },
+    {
+      "supplier_sku": "001730",
+      "barcode": "9399002000205",
+      "description": "Studio H-Frame Easel Beech",
+      "qty": 1,
+      "unit_cost_ex_tax": 210.0,
+      "note": ""
+    },
+    {
+      "supplier_sku": "001731",
+      "barcode": "9399002000212",
+      "description": "Table Easel Pine",
+      "qty": 3,
+      "unit_cost_ex_tax": 35.0,
+      "note": ""
+    },
+    {
+      "supplier_sku": "000999",
+      "barcode": "9399002000304",
+      "description": "Canvas Pliers (promo bonus)",
+      "qty": 1,
+      "unit_cost_ex_tax": 0.0,
+      "note": "free bonus item"
+    }
+  ]
+}

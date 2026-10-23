@@ -1,0 +1,72 @@
+{
+  "supplier_name": "Harbour Pigments Pty Ltd",
+  "invoice_number": "HP-INV-58213",
+  "invoice_date": "2026-10-14",
+  "subtotal_ex_tax": 458.07,
+  "lines": [
+    {
+      "supplier_sku": "HP-AC75-TW",
+      "barcode": "9399001000017",
+      "description": "Studio Acrylic 75ml Titanium White",
+      "qty": 12,
+      "unit_cost_ex_tax": 5.5,
+      "note": "2 x CTN6 of 6 units"
+    },
+    {
+      "supplier_sku": "HP-AC75-UB",
+      "barcode": "9399001000024",
+      "description": "Studio Acrylic 75ml Ultramarine Blue",
+      "qty": 6,
+      "unit_cost_ex_tax": 6.1,
+      "note": "1 x CTN6 of 6 units"
+    },
+    {
+      "supplier_sku": "HP-AC75-CY",
+      "barcode": "9399001000031",
+      "description": "Studio Acrylic 75ml Cadmium Yellow Hue",
+      "qty": 6,
+      "unit_cost_ex_tax": 6.1,
+      "note": "1 x CTN6 of 6 units"
+    },
+    {
+      "supplier_sku": "HP-OIL37-BS",
+      "barcode": "9399001000109",
+      "description": "Artist Oil 37ml Burnt Sienna",
+      "qty": 6,
+      "unit_cost_ex_tax": 9.85,
+      "note": ""
+    },
+    {
+      "supplier_sku": "HP-OIL37-PB",
+      "barcode": "9399001000116",
+      "description": "Artist Oil 37ml Phthalo Blue",
+      "qty": 6,
+      "unit_cost_ex_tax": 11.4,
+      "note": ""
+    },
+    {
+      "supplier_sku": "HP-GES500",
+      "barcode": "9399001000208",
+      "description": "Gesso Primer 500ml",
+      "qty": 4,
+      "unit_cost_ex_tax": 12.78,
+      "note": "10% line discount"
+    },
+    {
+      "supplier_sku": "HP-MED-GL250",
+      "barcode": "9399001000215",
+      "description": "Gloss Medium 250ml",
+      "qty": 3,
+      "unit_cost_ex_tax": 12.75,
+      "note": ""
+    },
+    {
+      "supplier_sku": "HP-BR-SET12",
+      "barcode": "9399001000307",
+      "description": "Synthetic Brush Set 12pc",
+      "qty": 12,
+      "unit_cost_ex_tax": 8.5,
+      "note": "1 x CTN12 of 12 units"
+    }
+  ]
+}
