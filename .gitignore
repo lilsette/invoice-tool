@@ -1,4 +1,6 @@
 out/
 *.xlsx
+!samples/*.xlsx
 __pycache__/
 suppliers.json
+templates/

@@ -1,6 +1,6 @@
 # invoice-to-po
 
-Supplier PDF invoice → filled-in Retail Express "Purchase Order Details" import sheet.
+Supplier PDF invoice → filled-in Retail Express purchase-order import sheet.
 
 ## Setup (once)
 
@@ -8,30 +8,43 @@ Needs [uv](https://docs.astral.sh/uv/) and an Anthropic API key:
 
     export ANTHROPIC_API_KEY=sk-ant-...
 
+## Get each supplier's template (once per supplier, refresh when their range changes)
+
+In Retail Express: **Get Excel Template** → *1 Supplier, for 1 Outlet* → pick the outlet
+(e.g. The Rocks) and supplier (e.g. FG - Fila Group) → File Format **.xlsx** → **Get Excel Template**.
+Save the file into `templates/` here. Any filename works: the tool reads the Supplier box inside the file.
+
+Then add the supplier's invoice name to `suppliers.json` (copy `suppliers.example.json`),
+so the tool knows which template an invoice belongs to:
+
+    {"Fila Group": "FG", "Faber-Castell": "FC"}
+
 ## Use
 
-    uv run invoice_to_po.py invoice.pdf --outlet "The Rocks" --supplier FG
+    uv run invoice_to_po.py ~/Downloads/invoice.pdf
 
-- Several PDFs at once: `uv run invoice_to_po.py ~/Downloads/inv*.pdf --outlet "The Rocks"`.
-  You get one .xlsx per invoice, named `PO <supplier> <invoice#>.xlsx`.
-- `--template RetailExpress.xlsx`: fill your real template file. The tool finds the
-  Outlet/Supplier boxes and the header row by their labels.
-- `suppliers.json` (copy `suppliers.example.json`) maps part of a supplier's name to its
-  Retail Express supplier code, so you can leave out `--supplier`.
-- `--save-json` keeps the raw extraction. Edit the .json and run the tool on it
-  to rebuild the sheet without reading the PDF again.
+- Several invoices at once, even from different suppliers: `uv run invoice_to_po.py ~/Downloads/*.pdf`.
+  You get one .xlsx per invoice, named `PO <code> <invoice#>.xlsx`, ready for **Upload Excel**.
+- `--supplier FG` picks the template directly; `--template file.xlsx` uses one file for everything.
+- `--save-json` keeps what was read from the PDF. Edit the .json and run the tool on it to rebuild the
+  sheet without reading the PDF again.
 
 ## What goes where
 
+The template already has Outlet and Supplier filled in; the tool leaves them alone (`--outlet` overrides).
+
 | Column | Filled with |
 |---|---|
-| SupplierSKU | supplier's item code from the invoice |
-| SupplierSKU2 | barcode (EAN/APN), when printed (`--sku2 none` to leave blank) |
+| ProductId | the matching product from the template's master sheet, found by supplier SKU, then barcode |
+| SupplierSKU | the supplier's code as Retail Express has it (from the invoice when there's no match) |
 | ShortDescription | invoice description (reference only) |
 | Qty | units: cartons are converted to units when the pack size is printed |
 | SupplierBuy | unit cost ex GST, after line discounts |
-| ProductId, ManufacturerSKU | left blank: Retail Express looks these up |
+| SupplierSKU2 | blank (`--sku2 barcode` puts the invoice barcode there) |
 
-Freight, surcharges and similar lines are skipped. A second sheet, **Invoice Check**, lists every
-line with notes and compares the line total against the invoice subtotal. The tool also prints a
-warning when those two numbers disagree, or when a line has no supplier SKU.
+Codes match loosely: case, spaces, dashes, dots and leading zeros are ignored (`FG-0012` = `fg0012`).
+
+Freight, surcharges and similar lines are skipped. A second sheet, **Invoice Check**, lists every line,
+the field it matched on, and notes, and highlights lines that **aren't in Retail Express** for that
+supplier (new products to create first). The tool also warns when the lines don't add up to the
+invoice subtotal.

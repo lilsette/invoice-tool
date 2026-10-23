@@ -5,11 +5,14 @@
 """Turn supplier PDF invoices into a filled-in Retail Express
 "Purchase Orders - Purchase Order Details" import sheet.
 
-    uv run invoice_to_po.py INVOICE.pdf [MORE.pdf ...] --outlet "The Rocks" --supplier FG
+    uv run invoice_to_po.py INVOICE.pdf [MORE.pdf ...]
 
-Each invoice becomes its own .xlsx (one PO per supplier invoice), written next to
-the PDF unless --out-dir is given. Pass --template with your own copy of the
-Retail Express template to fill that exact file; otherwise a replica is generated.
+Retail Express makes a different template per supplier + outlet (Inventory → purchase
+order import → Get Excel Template). Save each one into templates/ and the tool picks
+the matching one per invoice (or pass --template). The template's master sheet is used
+to match invoice lines to Retail Express ProductIds; lines it can't match are flagged.
+
+Each invoice becomes its own .xlsx, written next to the PDF unless --out-dir is given.
 """
 
 from __future__ import annotations
@@ -103,6 +106,8 @@ class Line:
     qty: int
     unit_cost: Decimal
     note: str
+    product_id: str = ""     # from the template's master sheet, when the line matched
+    matched_on: str = ""     # which field matched, for the check sheet
 
 
 @dataclass
@@ -237,26 +242,109 @@ def build_template() -> Workbook:
     return wb
 
 
-def fill(wb: Workbook, outlet: str, supplier_code: str, inv: Invoice, sku2: str) -> Worksheet:
-    ws = None
-    for sheet in wb.worksheets:
-        if find_cell(sheet, "SupplierSKU"):
-            ws = sheet
-            break
-    if ws is None:
-        raise RuntimeError("template has no 'SupplierSKU' header cell")
+def norm(v) -> str:
+    """Compare codes loosely: case, spaces, dashes and dots don't matter."""
+    if v is None:
+        return ""
+    if isinstance(v, float) and v.is_integer():
+        v = int(v)
+    return "".join(ch for ch in str(v).upper() if ch.isalnum())
 
+
+def header_key(v) -> str:
+    return norm(v).lower()
+
+
+def po_sheet(wb: Workbook) -> Worksheet:
+    for sheet in wb.worksheets:
+        if find_cell(sheet, "SupplierSKU") and find_cell(sheet, "Qty"):
+            return sheet
+    raise RuntimeError("template has no sheet with 'SupplierSKU' and 'Qty' headers")
+
+
+def box_value(ws: Worksheet, label: str):
+    cell = find_cell(ws, label)
+    return None if cell is None else ws.cell(cell.row, cell.column + 1).value
+
+
+# Master-sheet columns worth matching on, by normalised header.
+SKU_HEADERS = ("suppliersku", "suppliersku2", "manufacturersku", "sku")
+BARCODE_HEADERS = ("barcode", "ean", "apn", "upc", "gtin", "productbarcode")
+
+
+class Master:
+    """The product list Retail Express puts in a supplier's template ("See Master Sheet")."""
+
+    def __init__(self, rows: list[dict[str, object]]):
+        self.rows = rows
+        self.index: dict[str, dict[str, dict]] = {}
+        for row in rows:
+            for col, value in row.items():
+                key = norm(value)
+                if key and (col in SKU_HEADERS or col in BARCODE_HEADERS):
+                    self.index.setdefault(col, {}).setdefault(key, row)
+                    self.index.setdefault(col, {}).setdefault(key.lstrip("0"), row)
+
+    @classmethod
+    def from_workbook(cls, wb: Workbook, skip: Worksheet) -> "Master | None":
+        for ws in wb.worksheets:
+            if ws is skip:
+                continue
+            for header_row in ws.iter_rows(max_row=min(ws.max_row, 30)):
+                heads = {header_key(c.value): c.column for c in header_row if c.value is not None}
+                if "productid" in heads and any(h in heads for h in SKU_HEADERS + BARCODE_HEADERS):
+                    rows = []
+                    for r in ws.iter_rows(min_row=header_row[0].row + 1, values_only=True):
+                        row = {h: r[c - 1] for h, c in heads.items() if c - 1 < len(r)}
+                        if row.get("productid") not in (None, ""):
+                            rows.append(row)
+                    return cls(rows) if rows else None
+        return None
+
+    def match(self, line: Line) -> tuple[dict, str] | None:
+        tries = [(line.supplier_sku, SKU_HEADERS + BARCODE_HEADERS),
+                 (line.barcode, BARCODE_HEADERS + SKU_HEADERS)]
+        for value, cols in tries:
+            key = norm(value)
+            if not key:
+                continue
+            for col in cols:
+                idx = self.index.get(col, {})
+                hit = idx.get(key) or idx.get(key.lstrip("0"))
+                if hit:
+                    return hit, col
+        return None
+
+
+def apply_master(master: Master | None, inv: Invoice) -> None:
+    if master is None:
+        return
+    for line in inv.lines:
+        found = master.match(line)
+        if found:
+            row, col = found
+            pid = row["productid"]
+            line.product_id = str(int(pid)) if isinstance(pid, float) and pid.is_integer() else str(pid)
+            line.matched_on = col
+            if row.get("suppliersku"):
+                line.supplier_sku = str(row["suppliersku"])
+
+
+def fill(ws: Worksheet, outlet: str | None, supplier_code: str | None, inv: Invoice, sku2: str) -> None:
+    # The Retail Express template arrives with Outlet and Supplier already filled in;
+    # only overwrite them when told to, or when they are blank.
     for label, value in (("Outlet", outlet), ("Supplier", supplier_code)):
         cell = find_cell(ws, label)
         if cell is None:
             raise RuntimeError(f"template has no '{label}' label cell")
-        ws.cell(cell.row, cell.column + 1, value)
+        box = ws.cell(cell.row, cell.column + 1)
+        if value:
+            box.value = value
+        elif box.value in (None, ""):
+            raise RuntimeError(f"the template's {label} box is empty — pass --{label.lower()}")
 
     header = find_cell(ws, "SupplierSKU")
-    cols = {}
-    for cell in ws[header.row]:
-        if isinstance(cell.value, str):
-            cols[cell.value.replace(" ", "")] = cell.column
+    cols = {header_key(c.value): c.column for c in ws[header.row] if c.value is not None}
 
     first = header.row + 1
     # Clear anything left in the template's data area.
@@ -266,19 +354,20 @@ def fill(wb: Workbook, outlet: str, supplier_code: str, inv: Invoice, sku2: str)
 
     for i, line in enumerate(inv.lines):
         r = first + i
-        ws.cell(r, cols["SupplierSKU"], line.supplier_sku or None)
-        if sku2 == "barcode" and "SupplierSKU2" in cols:
-            ws.cell(r, cols["SupplierSKU2"], line.barcode or None)
-        if "ShortDescription" in cols:
-            ws.cell(r, cols["ShortDescription"], line.description)
-        ws.cell(r, cols["Qty"], line.qty)
-        if "SupplierBuy" in cols:
-            c = ws.cell(r, cols["SupplierBuy"], float(line.unit_cost))
+        if line.product_id and "productid" in cols:
+            ws.cell(r, cols["productid"], int(line.product_id) if line.product_id.isdigit() else line.product_id)
+        ws.cell(r, cols["suppliersku"], line.supplier_sku or None)
+        if sku2 == "barcode" and "suppliersku2" in cols:
+            ws.cell(r, cols["suppliersku2"], line.barcode or None)
+        if "shortdescription" in cols:
+            ws.cell(r, cols["shortdescription"], line.description)
+        ws.cell(r, cols["qty"], line.qty)
+        if "supplierbuy" in cols:
+            c = ws.cell(r, cols["supplierbuy"], float(line.unit_cost))
             c.number_format = '"$"#,##0.00##'
-    return ws
 
 
-def add_check_sheet(wb: Workbook, inv: Invoice, pdf: Path) -> Decimal:
+def add_check_sheet(wb: Workbook, inv: Invoice, pdf: Path, has_master: bool) -> Decimal:
     ws = wb.create_sheet("Invoice Check")
     ws.append(["Source", pdf.name])
     ws.append(["Supplier on invoice", inv.supplier_name])
@@ -288,13 +377,19 @@ def add_check_sheet(wb: Workbook, inv: Invoice, pdf: Path) -> Decimal:
     ws.append(["Lines total ex tax", float(total)])
     ws.append(["Invoice subtotal ex tax", None if inv.subtotal_ex_tax is None else float(inv.subtotal_ex_tax)])
     ws.append([])
-    ws.append(["SupplierSKU", "Barcode", "Description", "Qty", "Unit ex tax", "Line ex tax", "Note"])
+    ws.append(["ProductId", "SupplierSKU", "Barcode", "Description", "Qty", "Unit ex tax", "Line ex tax",
+               "Matched on", "Note"])
     for c in ws[ws.max_row]:
         c.font = Font(bold=True)
+    amber = PatternFill("solid", fgColor="FFE699")
     for l in inv.lines:
-        ws.append([l.supplier_sku, l.barcode, l.description, l.qty, float(l.unit_cost),
-                   float((l.unit_cost * l.qty).quantize(Decimal("0.01"))), l.note])
-    for col, w in zip("ABCDEFG", (18, 16, 40, 8, 12, 12, 50)):
+        ws.append([l.product_id, l.supplier_sku, l.barcode, l.description, l.qty, float(l.unit_cost),
+                   float((l.unit_cost * l.qty).quantize(Decimal("0.01"))),
+                   l.matched_on or ("NOT IN RETAIL EXPRESS" if has_master else ""), l.note])
+        if has_master and not l.product_id:
+            for c in ws[ws.max_row]:
+                c.fill = amber
+    for col, w in zip("ABCDEFGHI", (10, 18, 16, 40, 8, 12, 12, 22, 50)):
         ws.column_dimensions[col].width = w
     return total
 
@@ -302,7 +397,7 @@ def add_check_sheet(wb: Workbook, inv: Invoice, pdf: Path) -> Decimal:
 # --------------------------------------------------------------------------- cli
 
 
-def resolve_supplier(arg: str | None, inv: Invoice, suppliers_file: Path) -> str:
+def resolve_supplier(arg: str | None, inv: Invoice, suppliers_file: Path) -> str | None:
     if arg:
         return arg
     if suppliers_file.exists():
@@ -311,24 +406,50 @@ def resolve_supplier(arg: str | None, inv: Invoice, suppliers_file: Path) -> str
         for key, code in mapping.items():
             if key.lower() in name:
                 return code
-    print(f"  ! no supplier code for '{inv.supplier_name}' — pass --supplier or add it to "
-          f"{suppliers_file.name}; leaving the Supplier box blank", file=sys.stderr)
-    return ""
+    return None
+
+
+def pick_template(args, inv: Invoice, code: str | None) -> Path | None:
+    """--template wins; else find the file in --templates whose Supplier box matches."""
+    if args.template:
+        return args.template
+    if not args.templates:
+        return None
+    found: dict[str, Path] = {}
+    for f in sorted(args.templates.glob("*.xls[xm]")):
+        if f.name.startswith("~$"):
+            continue
+        ws = po_sheet(load_workbook(f, read_only=False))
+        value = box_value(ws, "Supplier")
+        if value:
+            found[norm(value)] = f
+    if code and norm(code) in found:
+        return found[norm(code)]
+    # No fuzzy fallback on the invoice's supplier name: two-letter codes like "FG" turn up
+    # inside unrelated names, and the wrong template means the wrong supplier's PO.
+    raise RuntimeError(
+        f"no template in {args.templates} for supplier '{code or inv.supplier_name}'. Download it from "
+        f"Retail Express (Get Excel Template → 1 Supplier, for 1 Outlet) into that folder, or pass --supplier. "
+        f"Templates found for: {', '.join(found) or 'none'}")
 
 
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("pdfs", nargs="+", type=Path, help="invoice PDFs (or .json extractions from --save-json)")
-    p.add_argument("--outlet", required=True, help='Retail Express outlet name, e.g. "The Rocks"')
-    p.add_argument("--supplier", help="Retail Express supplier code, e.g. FG (else looked up in suppliers.json)")
-    p.add_argument("--template", type=Path, help="your Retail Express template .xlsx to fill (else a replica)")
+    p.add_argument("--template", type=Path, help="the Retail Express template downloaded for this supplier + outlet")
+    p.add_argument("--templates", type=Path, default=Path(__file__).with_name("templates"),
+                   help="folder of downloaded templates, one per supplier; the right one is picked per invoice")
+    p.add_argument("--outlet", help='override the template\'s Outlet box, e.g. "The Rocks"')
+    p.add_argument("--supplier", help="Retail Express supplier code, e.g. FG (picks/overrides the template)")
     p.add_argument("--out-dir", type=Path, help="where to write the .xlsx files (default: next to each PDF)")
-    p.add_argument("--sku2", choices=["barcode", "none"], default="barcode",
-                   help="what to put in SupplierSKU2 (default: the invoice barcode)")
+    p.add_argument("--sku2", choices=["none", "barcode"], default="none",
+                   help="put the invoice barcode in SupplierSKU2 (default: leave it blank)")
     p.add_argument("--save-json", action="store_true", help="also save the raw extraction as .json for review/re-use")
     p.add_argument("--suppliers", type=Path, default=Path(__file__).with_name("suppliers.json"),
                    help="JSON map of supplier-name fragment → supplier code")
     args = p.parse_args()
+    if args.templates and not args.templates.is_dir():
+        args.templates = None
 
     failures = 0
     for src in args.pdfs:
@@ -344,20 +465,37 @@ def main() -> int:
                 (out_dir / f"{src.stem}.json").write_text(json.dumps(data, indent=2))
 
             inv = to_invoice(data)
-            supplier = resolve_supplier(args.supplier, inv, args.suppliers)
-            wb = load_workbook(args.template) if args.template else build_template()
-            fill(wb, args.outlet, supplier, inv, args.sku2)
-            total = add_check_sheet(wb, inv, src)
-            out = out_dir / f"PO {supplier or 'UNKNOWN'} {inv.invoice_number or src.stem}.xlsx".replace("/", "-")
+            code = resolve_supplier(args.supplier, inv, args.suppliers)
+            template = pick_template(args, inv, code)
+            if template:
+                wb = load_workbook(template)
+                print(f"  template: {template.name}")
+            else:
+                print("  ! no Retail Express template given — using a stand-in layout without product matching",
+                      file=sys.stderr)
+                wb = build_template()
+            ws = po_sheet(wb)
+            master = Master.from_workbook(wb, skip=ws)
+            apply_master(master, inv)
+            # Only override the template's own boxes when asked; a stand-in needs both.
+            fill(ws, args.outlet, args.supplier or (None if template else code), inv, args.sku2)
+            total = add_check_sheet(wb, inv, src, master is not None)
+            code = box_value(ws, "Supplier") or "UNKNOWN"
+            out = out_dir / f"PO {code} {inv.invoice_number or src.stem}.xlsx".replace("/", "-")
             wb.save(out)
 
-            print(f"  {inv.supplier_name} · invoice {inv.invoice_number} · {len(inv.lines)} lines · "
-                  f"${total} ex tax → {out}")
+            matched = sum(1 for l in inv.lines if l.product_id)
+            print(f"  {inv.supplier_name} · invoice {inv.invoice_number} · {len(inv.lines)} lines"
+                  + (f" ({matched} matched to Retail Express products)" if master else "")
+                  + f" · ${total} ex tax → {out}")
             if inv.subtotal_ex_tax is not None and abs(inv.subtotal_ex_tax - total) > Decimal("0.05"):
                 print(f"  ! lines add to ${total} but the invoice subtotal is ${inv.subtotal_ex_tax:.2f} — check it",
                       file=sys.stderr)
             for l in inv.lines:
-                if not l.supplier_sku:
+                if master and not l.product_id:
+                    print(f"  ! not in Retail Express for this supplier: {l.supplier_sku or '-'} {l.description}",
+                          file=sys.stderr)
+                elif not l.supplier_sku and not l.product_id:
                     print(f"  ! no supplier SKU: {l.description}", file=sys.stderr)
                 if l.note:
                     print(f"  · {l.supplier_sku or l.description}: {l.note}")
