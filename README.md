@@ -2,12 +2,35 @@
 
 Supplier PDF invoice → filled-in Retail Express purchase-order import sheet.
 
+No AI and no internet: everything runs on this computer.
+
 ## Setup (once)
 
-1. Install [uv](https://docs.astral.sh/uv/) (Mac: `brew install uv`; Windows: see the uv site).
-2. Get an Anthropic API key at https://console.anthropic.com → API Keys. Reading invoices uses it
-   (a few cents per invoice).
-3. Copy `.env.example` to `.env` and paste the key in.
+Install [uv](https://docs.astral.sh/uv/) (Mac: `brew install uv`; Windows: see the uv site).
+That's all; the first start downloads the Python bits it needs.
+
+## How invoices are read
+
+`invoice_reader.py` reads the text in the PDF. It finds the line-item table by its header row
+(Item Code / Description / Qty / Unit Price / Amount …), works out where each column sits, and reads
+the rows beneath. Along the way it:
+
+- spots prices that include GST and takes the GST off;
+- turns cartons and packs into units (UOM like `CTN6`, `PK10`, `BOX of 12`);
+- applies line discounts;
+- uses the supplied quantity rather than the ordered one, and keeps backordered lines off the PO;
+- skips freight, delivery, surcharges and similar lines;
+- copes with descriptions that wrap and tables that run over several pages.
+
+Limits:
+- It needs the PDF the supplier emailed. Scans and photos have no text in them, and it says so.
+- A supplier who names a column in a way it doesn't know shows "Couldn't find the line-item table".
+  Add that word to `HEADER_WORDS` at the top of `invoice_reader.py`.
+- Always glance over the table on screen before downloading; you can fix any cell there.
+
+CSV files work too, one row per invoice line (e.g. from an email-export extension). The header row
+is found by the same column names. Supplier, Invoice Number and Invoice Date columns are used when
+present.
 
 ## The web app
 
@@ -15,8 +38,8 @@ Double-click `start.command` (Mac) or `start.bat` (Windows), or run `uv run app.
 It opens http://127.0.0.1:8765, which only this computer can reach.
 
 - **Supplier templates**: add each template downloaded from Retail Express (see below) once.
-- **Drop invoices** onto the page. Each one is read, matched to its supplier's template and shown
-  as a table you can correct (SKU, qty, unit cost, remove lines) before downloading the PO sheet.
+- **Drop invoices** (PDF or CSV) onto the page. Each one is read, matched to its supplier's template
+  and shown as a table you can correct (SKU, qty, unit cost, remove lines) before downloading the PO sheet.
 - Lines not in Retail Express are highlighted; the lines total is checked against the invoice subtotal.
 - Choosing a template for an unknown supplier remembers that supplier for next time.
 
@@ -25,8 +48,8 @@ Try it with the made-up invoices in `samples/test-invoices/` (regenerate with
 
     uv run app.py --templates samples/test-invoices/templates --suppliers samples/test-invoices/suppliers.json
 
-The `.expected.json` files there can be dropped on the page too: they show the right result
-without needing an API key.
+`uv run --with pdfplumber python samples/check_reader.py` checks the reader still reads all of them
+exactly right.
 
 ## Command line
 

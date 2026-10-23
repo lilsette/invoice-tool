@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["reportlab>=4", "openpyxl>=3.1"]
+# dependencies = ["reportlab>=4", "openpyxl>=3.1", "pdfplumber>=0.11"]
 # ///
 """Make three fake art-supply invoices to test invoice_to_po.py with.
 
@@ -21,6 +21,9 @@ exercise something different:
   2. Gumleaf Easels    — GST-INCLUSIVE prices only, SKUs with leading zeros, a free bonus item
   3. Paperbark Mills   — two pages, a backordered line (0 supplied), SKUs formatted
                          differently from Retail Express (dots vs dashes), a minimum-order fee
+  4. Kookaburra Brushes — a different layout altogether: Qty first, no barcodes, a ruled grid,
+                         no "$" signs, dd/mm/yyyy date, freight billed as a coded line, and
+                         a table that runs onto page 2 without repeating its header
 """
 
 from __future__ import annotations
@@ -77,6 +80,7 @@ class Invoice:
     items: list[Item]
     charges: list[tuple[str, Decimal]] = field(default_factory=list)  # freight etc, same tax basis
     first_product_id: int = 20000
+    layout: str = "standard"   # or "compact"
 
 
 INVOICES = [
@@ -162,6 +166,24 @@ INVOICES = [
         ],
         charges=[("Small order surcharge", Decimal("0.00")), ("Freight", Decimal("32.00"))],
     ),
+    Invoice(
+        file="04-kookaburra-brushes",
+        code="KB",
+        name="Kookaburra Brush Company",
+        address=["9 Bristle St", "Newcastle NSW 2300"],
+        abn="22 333 444 555",
+        number="4471",
+        date="21/10/2026",
+        tax_inclusive=False,
+        first_product_id=63000,
+        layout="compact",
+        items=[Item(f"KB{n:03d}", "", f"{kind} Brush Size {size}", q, "EA", p)
+               for n, (kind, size, q, p) in enumerate(
+                   [(k, sz, 6 if sz < 8 else 3, Decimal(str(round(1.10 + sz * 0.42 + i * 0.9, 2))))
+                    for i, k in enumerate(["Round Taklon", "Flat Taklon", "Filbert Hog", "Liner Sable", "Fan Synthetic"])
+                    for sz in (2, 4, 6, 8, 10, 12)], start=1)],
+        charges=[("Freight", Decimal("24.00"))],
+    ),
 ]
 
 
@@ -174,7 +196,42 @@ def line_total(it: Item) -> Decimal:
     return (it.price * qty * (100 - it.disc) / 100).quantize(C2, ROUND_HALF_UP)
 
 
+def render_compact(inv: Invoice, path: Path) -> None:
+    """A plainer, different layout: Qty first, ruled grid, no barcodes, no $ signs,
+    freight as a coded line, and no repeated header when the table runs onto page 2."""
+    styles = getSampleStyleSheet()
+    small = styles["Normal"].clone("small", fontSize=8, leading=10)
+    doc = SimpleDocTemplate(str(path), pagesize=A4, leftMargin=18 * mm, rightMargin=18 * mm,
+                            topMargin=20 * mm, bottomMargin=18 * mm, title=f"Invoice {inv.number}")
+    story = [Paragraph(f"<b><font size=13>{inv.name}</font></b> &nbsp; ABN {inv.abn}", styles["Normal"]),
+             Paragraph(", ".join(inv.address), small), Spacer(1, 4 * mm),
+             Paragraph(f"<b>INVOICE</b> &nbsp;&nbsp; Invoice #: {inv.number} &nbsp;&nbsp; Date: {inv.date} "
+                       f"&nbsp;&nbsp; Customer: Sample Art Supplies (The Rocks)", small), Spacer(1, 5 * mm)]
+    rows = [["Qty", "Product Code", "Description", "Unit Price (ex GST)", "Total"]]
+    for it in inv.items:
+        rows.append([str(it.qty), it.sku, it.desc, f"{it.price:.2f}", f"{line_total(it):,.2f}"])
+    for label, amt in inv.charges:
+        rows.append(["1", "FRT", label, f"{amt:.2f}", f"{amt:,.2f}"])
+    t = Table(rows, repeatRows=0, colWidths=[14 * mm, 28 * mm, 80 * mm, 32 * mm, 20 * mm])
+    t.setStyle(TableStyle([("FONT", (0, 0), (-1, -1), "Helvetica", 8.5),
+                           ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 8.5),
+                           ("GRID", (0, 0), (-1, -1), 0.4, colors.grey),
+                           ("ALIGN", (3, 0), (-1, -1), "RIGHT"),
+                           ("TOPPADDING", (0, 0), (-1, -1), 5), ("BOTTOMPADDING", (0, 0), (-1, -1), 5)]))
+    goods = sum((line_total(i) for i in inv.items), Decimal(0))
+    sub = goods + sum((a for _, a in inv.charges), Decimal(0))
+    gst = (sub * GST).quantize(C2, ROUND_HALF_UP)
+    tt = Table([["Sub Total", f"{sub:,.2f}"], ["GST", f"{gst:,.2f}"], ["Total", f"{sub + gst:,.2f}"]],
+               colWidths=[30 * mm, 25 * mm], hAlign="RIGHT")
+    tt.setStyle(TableStyle([("FONT", (0, 0), (-1, -1), "Helvetica", 9), ("ALIGN", (1, 0), (1, -1), "RIGHT")]))
+    story += [t, Spacer(1, 4 * mm), tt, Spacer(1, 6 * mm),
+              Paragraph("TEST INVOICE — made-up data for software testing, not a real document.", small)]
+    doc.build(story)
+
+
 def render_pdf(inv: Invoice, path: Path) -> None:
+    if inv.layout == "compact":
+        return render_compact(inv, path)
     styles = getSampleStyleSheet()
     small = styles["Normal"].clone("small", fontSize=8, leading=10)
     doc = SimpleDocTemplate(str(path), pagesize=A4, leftMargin=15 * mm, rightMargin=15 * mm,

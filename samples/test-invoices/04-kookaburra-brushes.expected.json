@@ -1,0 +1,248 @@
+{
+  "supplier_name": "Kookaburra Brush Company",
+  "invoice_number": "4471",
+  "invoice_date": "21/10/2026",
+  "subtotal_ex_tax": 731.7,
+  "lines": [
+    {
+      "supplier_sku": "KB001",
+      "barcode": "",
+      "description": "Round Taklon Brush Size 2",
+      "qty": 6,
+      "unit_cost_ex_tax": 1.94,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB002",
+      "barcode": "",
+      "description": "Round Taklon Brush Size 4",
+      "qty": 6,
+      "unit_cost_ex_tax": 2.78,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB003",
+      "barcode": "",
+      "description": "Round Taklon Brush Size 6",
+      "qty": 6,
+      "unit_cost_ex_tax": 3.62,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB004",
+      "barcode": "",
+      "description": "Round Taklon Brush Size 8",
+      "qty": 3,
+      "unit_cost_ex_tax": 4.46,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB005",
+      "barcode": "",
+      "description": "Round Taklon Brush Size 10",
+      "qty": 3,
+      "unit_cost_ex_tax": 5.3,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB006",
+      "barcode": "",
+      "description": "Round Taklon Brush Size 12",
+      "qty": 3,
+      "unit_cost_ex_tax": 6.14,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB007",
+      "barcode": "",
+      "description": "Flat Taklon Brush Size 2",
+      "qty": 6,
+      "unit_cost_ex_tax": 2.84,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB008",
+      "barcode": "",
+      "description": "Flat Taklon Brush Size 4",
+      "qty": 6,
+      "unit_cost_ex_tax": 3.68,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB009",
+      "barcode": "",
+      "description": "Flat Taklon Brush Size 6",
+      "qty": 6,
+      "unit_cost_ex_tax": 4.52,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB010",
+      "barcode": "",
+      "description": "Flat Taklon Brush Size 8",
+      "qty": 3,
+      "unit_cost_ex_tax": 5.36,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB011",
+      "barcode": "",
+      "description": "Flat Taklon Brush Size 10",
+      "qty": 3,
+      "unit_cost_ex_tax": 6.2,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB012",
+      "barcode": "",
+      "description": "Flat Taklon Brush Size 12",
+      "qty": 3,
+      "unit_cost_ex_tax": 7.04,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB013",
+      "barcode": "",
+      "description": "Filbert Hog Brush Size 2",
+      "qty": 6,
+      "unit_cost_ex_tax": 3.74,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB014",
+      "barcode": "",
+      "description": "Filbert Hog Brush Size 4",
+      "qty": 6,
+      "unit_cost_ex_tax": 4.58,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB015",
+      "barcode": "",
+      "description": "Filbert Hog Brush Size 6",
+      "qty": 6,
+      "unit_cost_ex_tax": 5.42,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB016",
+      "barcode": "",
+      "description": "Filbert Hog Brush Size 8",
+      "qty": 3,
+      "unit_cost_ex_tax": 6.26,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB017",
+      "barcode": "",
+      "description": "Filbert Hog Brush Size 10",
+      "qty": 3,
+      "unit_cost_ex_tax": 7.1,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB018",
+      "barcode": "",
+      "description": "Filbert Hog Brush Size 12",
+      "qty": 3,
+      "unit_cost_ex_tax": 7.94,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB019",
+      "barcode": "",
+      "description": "Liner Sable Brush Size 2",
+      "qty": 6,
+      "unit_cost_ex_tax": 4.64,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB020",
+      "barcode": "",
+      "description": "Liner Sable Brush Size 4",
+      "qty": 6,
+      "unit_cost_ex_tax": 5.48,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB021",
+      "barcode": "",
+      "description": "Liner Sable Brush Size 6",
+      "qty": 6,
+      "unit_cost_ex_tax": 6.32,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB022",
+      "barcode": "",
+      "description": "Liner Sable Brush Size 8",
+      "qty": 3,
+      "unit_cost_ex_tax": 7.16,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB023",
+      "barcode": "",
+      "description": "Liner Sable Brush Size 10",
+      "qty": 3,
+      "unit_cost_ex_tax": 8.0,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB024",
+      "barcode": "",
+      "description": "Liner Sable Brush Size 12",
+      "qty": 3,
+      "unit_cost_ex_tax": 8.84,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB025",
+      "barcode": "",
+      "description": "Fan Synthetic Brush Size 2",
+      "qty": 6,
+      "unit_cost_ex_tax": 5.54,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB026",
+      "barcode": "",
+      "description": "Fan Synthetic Brush Size 4",
+      "qty": 6,
+      "unit_cost_ex_tax": 6.38,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB027",
+      "barcode": "",
+      "description": "Fan Synthetic Brush Size 6",
+      "qty": 6,
+      "unit_cost_ex_tax": 7.22,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB028",
+      "barcode": "",
+      "description": "Fan Synthetic Brush Size 8",
+      "qty": 3,
+      "unit_cost_ex_tax": 8.06,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB029",
+      "barcode": "",
+      "description": "Fan Synthetic Brush Size 10",
+      "qty": 3,
+      "unit_cost_ex_tax": 8.9,
+      "note": ""
+    },
+    {
+      "supplier_sku": "KB030",
+      "barcode": "",
+      "description": "Fan Synthetic Brush Size 12",
+      "qty": 3,
+      "unit_cost_ex_tax": 9.74,
+      "note": ""
+    }
+  ]
+}

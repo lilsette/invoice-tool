@@ -1,14 +1,14 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["anthropic>=0.70", "openpyxl>=3.1", "fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
+# dependencies = ["openpyxl>=3.1", "pdfplumber>=0.11", "fastapi>=0.110", "uvicorn>=0.29", "python-multipart>=0.0.9"]
 # ///
 """Local web front-end for invoice_to_po.
 
     uv run app.py                      # http://127.0.0.1:8765
     uv run app.py --templates samples/test-invoices/templates --suppliers samples/test-invoices/suppliers.json
 
-Runs on this computer only (127.0.0.1). Invoices go to the Anthropic API to be read;
-templates, supplier codes and the finished sheets stay on disk here.
+Runs on this computer only (127.0.0.1), with no internet or AI: invoices are read by
+invoice_reader.py, and templates, supplier codes and the finished sheets stay on disk here.
 """
 
 from __future__ import annotations
@@ -16,7 +16,6 @@ from __future__ import annotations
 import argparse
 import io
 import json
-import os
 import re
 import threading
 import webbrowser
@@ -28,15 +27,9 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 import invoice_to_po as core
+from invoice_reader import ReadError
 
 HERE = Path(__file__).parent
-
-# ANTHROPIC_API_KEY can live in a .env file next to this script instead of the environment.
-if (HERE / ".env").exists():
-    for raw in (HERE / ".env").read_text().splitlines():
-        key, sep, value = raw.strip().partition("=")
-        if sep and not key.startswith("#"):
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 app = FastAPI(title="Invoice → PO")
 CONFIG = {"templates": HERE / "templates", "suppliers": HERE / "suppliers.json"}
 
@@ -57,7 +50,6 @@ def index():
 @app.get("/api/status")
 def status():
     return {
-        "api_key": bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")),
         "templates": template_list(),
         "suppliers": core.load_suppliers(CONFIG["suppliers"]),
     }
@@ -97,16 +89,14 @@ def delete_template(code: str):
 async def extract(file: UploadFile = File(...)):
     raw = await file.read()
     name = file.filename or "invoice"
-    if name.lower().endswith(".json"):
-        data = json.loads(raw)
-    else:
-        if not raw.startswith(b"%PDF"):
-            raise HTTPException(400, "Not a PDF")
-        try:
-            data = core.extract_invoice(raw, name)
-        except Exception as e:
-            raise HTTPException(502, str(e))
-    code = core.code_for(core.to_invoice(data), core.load_suppliers(CONFIG["suppliers"]))
+    suppliers = core.load_suppliers(CONFIG["suppliers"])
+    if name.lower().endswith(".pdf") and not raw.startswith(b"%PDF"):
+        raise HTTPException(400, "Not a PDF")
+    try:
+        data = core.read_any(name, raw, suppliers)
+    except ReadError as e:
+        raise HTTPException(422, str(e))
+    code = core.code_for(core.to_invoice(data), suppliers)
     return {"data": data, "code": code if code and core.norm(code) in templates() else None}
 
 

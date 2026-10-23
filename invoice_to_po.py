@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.10"
-# dependencies = ["anthropic>=0.70", "openpyxl>=3.1"]
+# dependencies = ["openpyxl>=3.1", "pdfplumber>=0.11"]
 # ///
 """Turn supplier PDF invoices into a filled-in Retail Express
 "Purchase Orders - Purchase Order Details" import sheet.
@@ -18,7 +18,6 @@ Each invoice becomes its own .xlsx, written next to the PDF unless --out-dir is 
 from __future__ import annotations
 
 import argparse
-import base64
 import json
 import sys
 from dataclasses import dataclass
@@ -29,7 +28,7 @@ from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.worksheet import Worksheet
 
-MODEL = "claude-opus-5-5"
+from invoice_reader import read_csv, read_invoice
 
 # Template columns, in order, as Retail Express names them.
 COLUMNS = [
@@ -41,62 +40,6 @@ COLUMNS = [
     "Qty",
     "SupplierBuy",
 ]
-
-EXTRACTION_PROMPT = """\
-You are reading a supplier invoice so its lines can be loaded into a Retail Express
-purchase order. Return every product line on the invoice.
-
-For each line:
-- supplier_sku: the supplier's own product code / item number / SKU exactly as printed
-  (keep leading zeros, dashes and letters). Empty string if the line has none.
-- barcode: the EAN/UPC/APN barcode if printed, else empty string.
-- description: the product description as printed (trim to 50 characters).
-- qty: the number of SELLABLE UNITS supplied, as a whole number. If the invoice bills in
-  cartons/packs and states the units per carton, multiply it out (e.g. 2 ctn x 12 = 24)
-  and say so in note.
-- unit_cost_ex_tax: the cost of ONE sellable unit EXCLUDING GST/VAT, after any line
-  discount, as a decimal number. If the invoice only shows tax-inclusive prices, remove
-  the tax at the rate the invoice states. If qty was multiplied out from cartons, divide
-  the carton price the same way.
-- note: anything a buyer should double-check (unclear quantity, free goods, backorder,
-  pack conversion). Empty string if nothing.
-
-Skip lines that are not stock: freight, delivery, surcharges, deposits, rounding,
-subtotals, payment terms. Do include free/bonus stock lines at cost 0 with a note.
-
-Also return the header fields: supplier_name, invoice_number, invoice_date (YYYY-MM-DD
-or as printed), and subtotal_ex_tax for the stock lines if the invoice shows one
-(null if not shown).
-"""
-
-EXTRACTION_SCHEMA = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["supplier_name", "invoice_number", "invoice_date", "subtotal_ex_tax", "lines"],
-    "properties": {
-        "supplier_name": {"type": "string"},
-        "invoice_number": {"type": "string"},
-        "invoice_date": {"type": "string"},
-        "subtotal_ex_tax": {"type": ["number", "null"]},
-        "lines": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["supplier_sku", "barcode", "description", "qty", "unit_cost_ex_tax", "note"],
-                "properties": {
-                    "supplier_sku": {"type": "string"},
-                    "barcode": {"type": "string"},
-                    "description": {"type": "string"},
-                    "qty": {"type": "integer"},
-                    "unit_cost_ex_tax": {"type": "number"},
-                    "note": {"type": "string"},
-                },
-            },
-        },
-    },
-}
-
 
 @dataclass
 class Line:
@@ -119,39 +62,7 @@ class Invoice:
     lines: list[Line]
 
 
-# --------------------------------------------------------------------------- extraction
-
-
-def extract_invoice(pdf_bytes: bytes, name: str = "invoice") -> dict:
-    """Ask Claude to read the PDF and return the schema above as a dict."""
-    import anthropic
-
-    client = anthropic.Anthropic()
-    pdf_b64 = base64.standard_b64encode(pdf_bytes).decode()
-    with client.beta.messages.stream(
-        model=MODEL,
-        max_tokens=64000,
-        betas=["server-side-fallback-2026-07-01"],
-        extra_body={"fallbacks": "default"},
-        output_config={"effort": "medium", "format": {"type": "json_schema", "schema": EXTRACTION_SCHEMA}},
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": pdf_b64}},
-                    {"type": "text", "text": EXTRACTION_PROMPT},
-                ],
-            }
-        ],
-    ) as stream:
-        response = stream.get_final_message()
-
-    if response.stop_reason == "refusal":
-        raise RuntimeError(f"{name}: the model declined to read this file")
-    if response.stop_reason == "max_tokens":
-        raise RuntimeError(f"{name}: invoice too long for one pass — split the PDF")
-    text = "".join(b.text for b in response.content if b.type == "text")
-    return json.loads(text)
+# --------------------------------------------------------------------------- reading
 
 
 def to_invoice(data: dict) -> Invoice:
@@ -483,9 +394,19 @@ def build_po(data: dict, *, template: Path | None, outlet: str | None = None,
 # --------------------------------------------------------------------------- cli
 
 
+def read_any(name: str, raw: bytes, suppliers: dict[str, str]) -> dict:
+    """An invoice PDF, a CSV export of one, or a saved .json extraction."""
+    suffix = Path(name).suffix.lower()
+    if suffix == ".json":
+        return json.loads(raw)
+    if suffix in (".csv", ".tsv", ".txt"):
+        return read_csv(raw, suppliers, name)
+    return read_invoice(raw, suppliers)
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("pdfs", nargs="+", type=Path, help="invoice PDFs (or .json extractions from --save-json)")
+    p.add_argument("pdfs", nargs="+", type=Path, help="invoice PDFs (or CSV exports of them, or .json from --save-json)")
     p.add_argument("--template", type=Path, help="the Retail Express template downloaded for this supplier + outlet")
     p.add_argument("--templates", type=Path, default=Path(__file__).with_name("templates"),
                    help="folder of downloaded templates, one per supplier; the right one is picked per invoice")
@@ -505,10 +426,7 @@ def main() -> int:
     for src in args.pdfs:
         print(f"{src.name}")
         try:
-            if src.suffix.lower() == ".json":
-                data = json.loads(src.read_text())
-            else:
-                data = extract_invoice(src.read_bytes(), src.name)
+            data = read_any(src.name, src.read_bytes(), suppliers)
             out_dir = args.out_dir or src.parent
             out_dir.mkdir(parents=True, exist_ok=True)
             if args.save_json and src.suffix.lower() != ".json":
