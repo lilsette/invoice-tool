@@ -7,3 +7,4 @@ suppliers.json
 templates/
 !samples/**/templates/
 .env
+!docs/examples/*.xlsx
