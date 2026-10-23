@@ -275,7 +275,41 @@
     if (el) el.remove();
   }
 
+  // ---------------------------------------------------------------- examples (only when hosted)
+
+  // A hosted copy ships examples/ beside the page; a copy opened from disk can't fetch, so the
+  // panel stays hidden there.
+  async function setupExamples() {
+    let manifest;
+    try { manifest = await (await fetch("examples/examples.json")).json(); } catch { return; }
+    $("#exampleLinks").innerHTML = manifest.suppliers.map(x =>
+      `<div><b>${esc(x.code)}</b> ${esc(x.name)} — <span class="muted">${esc(x.about)}</span><br>
+       <a href="examples/${esc(x.invoice)}" download>invoice</a> ·
+       <a href="examples/${esc(x.template)}" download>template</a></div>`).join("<div style='height:6px'></div>")
+      + (manifest.csv ? `<div style="margin-top:8px"><a href="examples/${esc(manifest.csv)}" download>CSV export example</a></div>` : "");
+    $("#examples").hidden = false;
+    $("#loadExamples").onclick = async () => {
+      const btn = $("#loadExamples");
+      btn.disabled = true; btn.textContent = "Loading…";
+      try {
+        const get = async path => (await fetch("examples/" + path)).arrayBuffer();
+        for (const x of manifest.suppliers) {
+          const buf = await get(x.template);
+          const { code, outlet } = await PO.describeTemplate(buf);
+          await storage.putTemplate({ key: PO.norm(code), code, outlet, file: x.template.split("/").pop(), buf });
+          suppliers[x.name.split(" ").slice(0, 2).join(" ")] = code;
+        }
+        storage.saveSuppliers(suppliers);
+        await loadTemplates();
+        addFiles(await Promise.all(manifest.suppliers.map(async x =>
+          new File([await get(x.invoice)], x.invoice.split("/").pop(), { type: "application/pdf" }))));
+      } catch (err) { alert("Couldn't load the examples: " + err.message); }
+      btn.disabled = false; btn.textContent = "Load the examples";
+    };
+  }
+
   // For the self-test and for poking at it from the console.
   window.App = { addFiles, invoices, loadTemplates };
   loadTemplates();
+  setupExamples();
 })();

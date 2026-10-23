@@ -1,0 +1,33 @@
+{
+  "suppliers": [
+    {
+      "code": "HP",
+      "name": "Harbour Pigments",
+      "about": "prices ex GST, cartons, a line discount, freight, one product not in Retail Express",
+      "invoice": "01-harbour-pigments.pdf",
+      "template": "template-HP.xlsx"
+    },
+    {
+      "code": "GE",
+      "name": "Gumleaf Easels",
+      "about": "prices include GST, codes with leading zeros, a free bonus item",
+      "invoice": "02-gumleaf-easels.pdf",
+      "template": "template-GE.xlsx"
+    },
+    {
+      "code": "PB",
+      "name": "Paperbark Paper Mills",
+      "about": "two pages, a backordered line, codes spelt differently from Retail Express",
+      "invoice": "03-paperbark-mills.pdf",
+      "template": "template-PB.xlsx"
+    },
+    {
+      "code": "KB",
+      "name": "Kookaburra Brush Company",
+      "about": "a different layout: qty first, no $ signs, table runs onto page 2",
+      "invoice": "04-kookaburra-brushes.pdf",
+      "template": "template-KB.xlsx"
+    }
+  ],
+  "csv": "05-harbour-export.csv"
+}
