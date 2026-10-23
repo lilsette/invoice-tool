@@ -1,0 +1,6 @@
+{"supplier_name": "FG Wholesale Pty Ltd", "invoice_number": "INV-10442", "invoice_date": "2026-10-20", "subtotal_ex_tax": 344.40,
+ "lines": [
+  {"supplier_sku": "FG-0012", "barcode": "9300601123456", "description": "Sea Salt Chips 150g", "qty": 24, "unit_cost_ex_tax": 2.15, "note": "2 ctn x 12 units"},
+  {"supplier_sku": "FG-0450", "barcode": "9300601654321", "description": "Sparkling Water 1L", "qty": 36, "unit_cost_ex_tax": 1.10, "note": ""},
+  {"supplier_sku": "007731", "barcode": "", "description": "Dark Chocolate 200g", "qty": 40, "unit_cost_ex_tax": 6.33, "note": ""}
+ ]}

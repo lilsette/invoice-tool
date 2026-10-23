@@ -1,0 +1,4 @@
+out/
+*.xlsx
+__pycache__/
+suppliers.json
